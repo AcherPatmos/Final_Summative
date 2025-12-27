@@ -66,8 +66,8 @@ def main() -> None:
     #   student_domains=("student.campus.edu",)
     #   staff_domains=("campus.edu",)
     role_config = RoleConfig(
-        student_domains=("student.campus.edu",),
-        staff_domains=("campus.edu",),
+        student_domains=("alustudent.com",),
+        staff_domains=("alueducation.com",),
     )
 
     sm = SystemManager(file_manager=fm, due_days=3, role_config=role_config)
