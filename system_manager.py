@@ -1,119 +1,127 @@
-# system_manager.py
 """
 Campus Resource Borrow & Return Management System - Core Logic
 
-SystemManager is the "brain" of the program:
-- Loads/saves JSON via FileManager
-- Validates rules
-- Manages Students, Resources, and BorrowTransactions
-- Provides a clean public API for menus (staff_menu.py, student_menu.py)
+This file contains the SystemManager class which controls the main rules of the system.
+- It loads and saves data through FileManager
+- It checks inputs and prevents invalid actions
+- It manages students, resources, and borrowing transactions
 
-Design choice: SystemManager works with plain dictionaries internally.
-This makes JSON persistence simple and avoids tight coupling to model classes.
+Note: This version avoids:
+- from __future__ import annotations
+- dataclasses / @dataclass
 """
 
-from __future__ import annotations
-
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 
+# ----------------------------
+# Custom Errors (so menus can show clear messages)
+# ----------------------------
 class SystemManagerError(Exception):
     """Base exception for predictable, user-friendly errors."""
     pass
 
 
 class NotFoundError(SystemManagerError):
+    """Raised when a student/resource/transaction cannot be found."""
     pass
 
 
 class ValidationError(SystemManagerError):
+    """Raised when user input is invalid (empty, wrong format, etc.)."""
     pass
 
 
 class ConflictError(SystemManagerError):
+    """Raised when an action is not allowed (duplicate, unavailable, etc.)."""
     pass
 
 
-def _today_iso() -> str:
+# ----------------------------
+# Helper functions
+# ----------------------------
+def today_iso() -> str:
+    """Return today's date as YYYY-MM-DD."""
     return date.today().isoformat()
 
 
-def _parse_iso(d: str) -> date:
-    # Expect YYYY-MM-DD
+def parse_iso(d: str) -> date:
+    """Convert YYYY-MM-DD string into a date object (and validate format)."""
     try:
         return datetime.strptime(d, "%Y-%m-%d").date()
     except Exception as e:
         raise ValidationError(f"Invalid date format '{d}'. Use YYYY-MM-DD.") from e
 
 
-def _iso_plus_days(start_iso: str, days: int) -> str:
-    return (_parse_iso(start_iso) + timedelta(days=days)).isoformat()
+def iso_plus_days(start_iso: str, days: int) -> str:
+    """Add days to a YYYY-MM-DD date string and return YYYY-MM-DD."""
+    new_date = parse_iso(start_iso) + timedelta(days=days)
+    return new_date.isoformat()
 
 
-def _require_nonempty(value: str, field: str) -> str:
+def require_nonempty(value: Any, field: str) -> str:
+    """Ensure a value is not empty."""
     if value is None or not str(value).strip():
         raise ValidationError(f"{field} cannot be empty.")
     return str(value).strip()
 
 
-def _require_int_ge_0(value: Any, field: str) -> int:
+def require_int_ge_0(value: Any, field: str) -> int:
+    """Ensure a value is an integer >= 0."""
     try:
         iv = int(value)
     except Exception as e:
         raise ValidationError(f"{field} must be an integer.") from e
+
     if iv < 0:
         raise ValidationError(f"{field} must be >= 0.")
     return iv
 
 
-@dataclass
+# ----------------------------
+# Role configuration (no dataclass)
+# ----------------------------
 class RoleConfig:
     """
-    Controls how role detection works from email.
+    Controls role detection based on email domain.
     Example:
-      student_domains=("student.campus.edu",)
-      staff_domains=("campus.edu",)
+      student_domains=("alustudent.com",)
+      staff_domains=("alu.edu",)
     """
-    student_domains: tuple = ("student.campus.edu",)
-    staff_domains: tuple = ("campus.edu",)
 
-
-class SystemManager:
     def __init__(
         self,
-        file_manager,
-        due_days: int = 3,
-        role_config: Optional[RoleConfig] = None,
+        student_domains: tuple = ("student.campus.edu",),
+        staff_domains: tuple = ("campus.edu",),
     ):
-        """
-        file_manager must provide:
-          - load_students() -> list[dict]
-          - load_resources() -> list[dict]
-          - load_transactions() -> list[dict]
-          - save_students(list[dict]) -> None
-          - save_resources(list[dict]) -> None
-          - save_transactions(list[dict]) -> None
-        """
+        self.student_domains = student_domains
+        self.staff_domains = staff_domains
+
+
+# ----------------------------
+# System Manager
+# ----------------------------
+class SystemManager:
+    def __init__(self, file_manager, due_days: int = 3, role_config: Optional[RoleConfig] = None):
         self.file_manager = file_manager
         self.due_days = due_days
-        self.role_config = role_config or RoleConfig()
+        self.role_config = role_config if role_config is not None else RoleConfig()
 
-        # Internal storage (lists of dicts)
+        # In-memory data
         self.students: List[Dict[str, Any]] = []
         self.resources: List[Dict[str, Any]] = []
         self.transactions: List[Dict[str, Any]] = []
 
     # ----------------------------
-    # Loading / Saving
+    # Load / Save
     # ----------------------------
     def load_all(self) -> None:
         self.students = self.file_manager.load_students() or []
         self.resources = self.file_manager.load_resources() or []
         self.transactions = self.file_manager.load_transactions() or []
 
-        # Normalize keys (in case older files used different names)
+        # normalize old keys (optional safety)
         for r in self.resources:
             if "resource_id" not in r and "item_id" in r:
                 r["resource_id"] = r.pop("item_id")
@@ -129,155 +137,183 @@ class SystemManager:
     # Role detection
     # ----------------------------
     def determine_role(self, email: str) -> str:
-        email = _require_nonempty(email, "email").lower()
+        email = require_nonempty(email, "email").lower()
+
         if "@" not in email:
             raise ValidationError("Email must contain '@'.")
 
         domain = email.split("@", 1)[1]
-        if any(domain.endswith(d) for d in self.role_config.student_domains):
-            return "student"
-        if any(domain.endswith(d) for d in self.role_config.staff_domains):
-            return "staff"
 
-        raise ValidationError(
-            "Email domain not recognized for student/staff. "
-            "Use the correct campus email."
-        )
+        for d in self.role_config.student_domains:
+            if domain.endswith(d):
+                return "student"
+
+        for d in self.role_config.staff_domains:
+            if domain.endswith(d):
+                return "staff"
+
+        raise ValidationError("Email domain not recognized for student/staff. Use the correct campus email.")
 
     # ----------------------------
     # Find helpers
     # ----------------------------
-    def _find_student(self, student_id: str) -> Optional[Dict[str, Any]]:
-        student_id = _require_nonempty(student_id, "student_id")
-        return next((s for s in self.students if s.get("student_id") == student_id), None)
+    def find_student(self, student_id: str) -> Optional[Dict[str, Any]]:
+        student_id = require_nonempty(student_id, "student_id")
+        for s in self.students:
+            if s.get("student_id") == student_id:
+                return s
+        return None
 
-    def _find_resource(self, resource_id: str) -> Optional[Dict[str, Any]]:
-        resource_id = _require_nonempty(resource_id, "resource_id")
-        return next((r for r in self.resources if r.get("resource_id") == resource_id), None)
+    def find_resource(self, resource_id: str) -> Optional[Dict[str, Any]]:
+        resource_id = require_nonempty(resource_id, "resource_id")
+        for r in self.resources:
+            if r.get("resource_id") == resource_id:
+                return r
+        return None
 
-    def _find_transaction(self, transaction_id: str) -> Optional[Dict[str, Any]]:
-        transaction_id = _require_nonempty(transaction_id, "transaction_id")
-        return next((t for t in self.transactions if t.get("transaction_id") == transaction_id), None)
+    def find_transaction(self, transaction_id: str) -> Optional[Dict[str, Any]]:
+        transaction_id = require_nonempty(transaction_id, "transaction_id")
+        for t in self.transactions:
+            if t.get("transaction_id") == transaction_id:
+                return t
+        return None
 
-    def _active_transactions_for_resource(self, resource_id: str) -> List[Dict[str, Any]]:
-        return [
-            t for t in self.transactions
-            if t.get("resource_id") == resource_id and t.get("status") == "borrowed"
-        ]
+    def active_transactions_for_resource(self, resource_id: str) -> List[Dict[str, Any]]:
+        active = []
+        for t in self.transactions:
+            if t.get("resource_id") == resource_id and t.get("status") == "borrowed":
+                active.append(t)
+        return active
 
-    def _active_transactions_for_student_resource(self, student_id: str, resource_id: str) -> List[Dict[str, Any]]:
-        return [
-            t for t in self.transactions
-            if t.get("student_id") == student_id
-            and t.get("resource_id") == resource_id
-            and t.get("status") == "borrowed"
-        ]
+    def active_transactions_for_student_resource(self, student_id: str, resource_id: str) -> List[Dict[str, Any]]:
+        active = []
+        for t in self.transactions:
+            if (
+                t.get("student_id") == student_id
+                and t.get("resource_id") == resource_id
+                and t.get("status") == "borrowed"
+            ):
+                active.append(t)
+        return active
 
     # ----------------------------
     # ID generation
     # ----------------------------
-    def _next_transaction_id(self) -> str:
-        # T001, T002...
-        existing_nums = []
+    def next_transaction_id(self) -> str:
+        nums = []
         for t in self.transactions:
             tid = str(t.get("transaction_id", ""))
             if tid.startswith("T") and tid[1:].isdigit():
-                existing_nums.append(int(tid[1:]))
-        nxt = (max(existing_nums) + 1) if existing_nums else 1
-        return f"T{nxt:03d}"
+                nums.append(int(tid[1:]))
+
+        if nums:
+            new_num = max(nums) + 1
+        else:
+            new_num = 1
+
+        return "T" + str(new_num).zfill(3)
 
     # ----------------------------
     # Students
     # ----------------------------
     def add_student(self, student_id: str, name: str, email: str) -> None:
-        student_id = _require_nonempty(student_id, "student_id")
-        name = _require_nonempty(name, "name")
-        email = _require_nonempty(email, "email")
+        student_id = require_nonempty(student_id, "student_id")
+        name = require_nonempty(name, "name")
+        email = require_nonempty(email, "email")
 
-        if self._find_student(student_id):
+        if self.find_student(student_id) is not None:
             raise ConflictError(f"Student ID '{student_id}' already exists.")
 
-        self.students.append(
-            {"student_id": student_id, "name": name, "email": email}
-        )
+        self.students.append({"student_id": student_id, "name": name, "email": email})
         self.file_manager.save_students(self.students)
 
     # ----------------------------
     # Resources (Staff)
     # ----------------------------
     def add_resource(self, resource_id: str, name: str, rtype: str, quantity: Any) -> None:
-        resource_id = _require_nonempty(resource_id, "resource_id")
-        name = _require_nonempty(name, "name")
-        rtype = _require_nonempty(rtype, "type")
-        qty = _require_int_ge_0(quantity, "quantity")
+        resource_id = require_nonempty(resource_id, "resource_id")
+        name = require_nonempty(name, "name")
+        rtype = require_nonempty(rtype, "type")
+        qty = require_int_ge_0(quantity, "quantity")
 
-        if self._find_resource(resource_id):
+        if self.find_resource(resource_id) is not None:
             raise ConflictError(f"Resource ID '{resource_id}' already exists.")
 
-        self.resources.append(
-            {"resource_id": resource_id, "name": name, "type": rtype, "quantity": qty}
-        )
+        self.resources.append({"resource_id": resource_id, "name": name, "type": rtype, "quantity": qty})
         self.file_manager.save_resources(self.resources)
 
     def update_resource_quantity(self, resource_id: str, new_quantity: Any) -> None:
-        r = self._find_resource(resource_id)
-        if not r:
+        r = self.find_resource(resource_id)
+        if r is None:
             raise NotFoundError(f"Resource '{resource_id}' not found.")
 
-        qty = _require_int_ge_0(new_quantity, "new_quantity")
+        qty = require_int_ge_0(new_quantity, "new_quantity")
         r["quantity"] = qty
         self.file_manager.save_resources(self.resources)
 
     def remove_resource(self, resource_id: str) -> None:
-        r = self._find_resource(resource_id)
-        if not r:
+        r = self.find_resource(resource_id)
+        if r is None:
             raise NotFoundError(f"Resource '{resource_id}' not found.")
 
-        # Block removal if currently borrowed (active transactions exist)
-        active = self._active_transactions_for_resource(resource_id)
+        active = self.active_transactions_for_resource(resource_id)
         if active:
             raise ConflictError("Cannot remove resource: it is currently borrowed.")
 
-        self.resources = [x for x in self.resources if x.get("resource_id") != resource_id]
+        new_list = []
+        for x in self.resources:
+            if x.get("resource_id") != resource_id:
+                new_list.append(x)
+
+        self.resources = new_list
         self.file_manager.save_resources(self.resources)
 
     def list_resources(self) -> List[Dict[str, Any]]:
-        # Return shallow copies to avoid accidental mutation in menus
-        return [dict(r) for r in self.resources]
+        result = []
+        for r in self.resources:
+            result.append(dict(r))  # copy
+        return result
 
     def list_available_resources(self) -> List[Dict[str, Any]]:
-        return [dict(r) for r in self.resources if int(r.get("quantity", 0)) > 0]
+        result = []
+        for r in self.resources:
+            if int(r.get("quantity", 0)) > 0:
+                result.append(dict(r))  # copy
+        return result
 
     # ----------------------------
     # Borrowing / Returning (Student)
     # ----------------------------
     def borrow_resource(self, student_id: str, resource_id: str, borrow_date: Optional[str] = None) -> Dict[str, Any]:
-        student_id = _require_nonempty(student_id, "student_id")
-        resource_id = _require_nonempty(resource_id, "resource_id")
+        student_id = require_nonempty(student_id, "student_id")
+        resource_id = require_nonempty(resource_id, "resource_id")
 
-        s = self._find_student(student_id)
-        if not s:
+        s = self.find_student(student_id)
+        if s is None:
             raise NotFoundError(f"Student '{student_id}' not found.")
 
-        r = self._find_resource(resource_id)
-        if not r:
+        r = self.find_resource(resource_id)
+        if r is None:
             raise NotFoundError(f"Resource '{resource_id}' not found.")
 
-        available_qty = int(r.get("quantity", 0))
-        if available_qty <= 0:
+        qty = int(r.get("quantity", 0))
+        if qty <= 0:
             raise ConflictError("Resource is not available (quantity is 0).")
 
-        # Optional policy: prevent borrowing same resource if already active
-        active_same = self._active_transactions_for_student_resource(student_id, resource_id)
+        # prevent borrowing same resource twice without returning
+        active_same = self.active_transactions_for_student_resource(student_id, resource_id)
         if active_same:
             raise ConflictError("Student already has this resource borrowed and not returned.")
 
-        bdate = borrow_date.strip() if borrow_date else _today_iso()
-        # Validate date format
-        _parse_iso(bdate)
+        if borrow_date is None:
+            bdate = today_iso()
+        else:
+            bdate = borrow_date.strip()
 
-        ddate = _iso_plus_days(bdate, self.due_days)
-        tid = self._next_transaction_id()
+        parse_iso(bdate)  # validate format
+        ddate = iso_plus_days(bdate, self.due_days)
+
+        tid = self.next_transaction_id()
 
         tx = {
             "transaction_id": tid,
@@ -289,8 +325,8 @@ class SystemManager:
             "status": "borrowed",
         }
 
-        # Update resource quantity + save
-        r["quantity"] = available_qty - 1
+        # update quantity and save
+        r["quantity"] = qty - 1
         self.transactions.append(tx)
 
         self.file_manager.save_resources(self.resources)
@@ -299,24 +335,30 @@ class SystemManager:
         return dict(tx)
 
     def return_resource(self, transaction_id: str, return_date: Optional[str] = None) -> Dict[str, Any]:
-        tx = self._find_transaction(transaction_id)
-        if not tx:
+        transaction_id = require_nonempty(transaction_id, "transaction_id")
+
+        tx = self.find_transaction(transaction_id)
+        if tx is None:
             raise NotFoundError(f"Transaction '{transaction_id}' not found.")
 
         if tx.get("status") != "borrowed":
             raise ConflictError("This transaction is already returned (or not active).")
 
-        r = self._find_resource(tx.get("resource_id", ""))
-        if not r:
+        rid = tx.get("resource_id", "")
+        r = self.find_resource(rid)
+        if r is None:
             raise NotFoundError("Resource for this transaction no longer exists.")
 
-        rdate = return_date.strip() if return_date else _today_iso()
-        _parse_iso(rdate)
+        if return_date is None:
+            rdate = today_iso()
+        else:
+            rdate = return_date.strip()
+
+        parse_iso(rdate)  # validate
 
         tx["return_date"] = rdate
         tx["status"] = "returned"
 
-        # Increase quantity
         r["quantity"] = int(r.get("quantity", 0)) + 1
 
         self.file_manager.save_resources(self.resources)
@@ -324,14 +366,14 @@ class SystemManager:
 
         return dict(tx)
 
-    # Convenience return method if your team insists on (student_id, resource_id)
     def return_resource_by_student_resource(self, student_id: str, resource_id: str, return_date: Optional[str] = None) -> Dict[str, Any]:
-        student_id = _require_nonempty(student_id, "student_id")
-        resource_id = _require_nonempty(resource_id, "resource_id")
+        student_id = require_nonempty(student_id, "student_id")
+        resource_id = require_nonempty(resource_id, "resource_id")
 
-        active = self._active_transactions_for_student_resource(student_id, resource_id)
+        active = self.active_transactions_for_student_resource(student_id, resource_id)
         if not active:
             raise NotFoundError("No active borrowed transaction found for this student and resource.")
+
         if len(active) > 1:
             raise ConflictError("Multiple active transactions found; return using transaction_id instead.")
 
@@ -341,19 +383,34 @@ class SystemManager:
     # Transactions / Reports (Staff)
     # ----------------------------
     def list_transactions(self, student_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        if student_id:
-            student_id = _require_nonempty(student_id, "student_id")
-            return [dict(t) for t in self.transactions if t.get("student_id") == student_id]
-        return [dict(t) for t in self.transactions]
+        if student_id is None:
+            return [dict(t) for t in self.transactions]
+
+        student_id = require_nonempty(student_id, "student_id")
+        result = []
+        for t in self.transactions:
+            if t.get("student_id") == student_id:
+                result.append(dict(t))
+        return result
 
     def is_overdue(self, tx: Dict[str, Any], current_date: str) -> bool:
         if tx.get("status") != "borrowed":
             return False
-        due = _parse_iso(tx.get("due_date", ""))
-        cur = _parse_iso(current_date)
+
+        due = parse_iso(tx.get("due_date", ""))
+        cur = parse_iso(current_date)
         return cur > due
 
     def list_overdue(self, current_date: Optional[str] = None) -> List[Dict[str, Any]]:
-        cdate = current_date.strip() if current_date else _today_iso()
-        _parse_iso(cdate)
-        return [dict(t) for t in self.transactions if self.is_overdue(t, cdate)]
+        if current_date is None:
+            cdate = today_iso()
+        else:
+            cdate = current_date.strip()
+
+        parse_iso(cdate)  # validate
+
+        result = []
+        for t in self.transactions:
+            if self.is_overdue(t, cdate):
+                result.append(dict(t))
+        return result
