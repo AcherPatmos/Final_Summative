@@ -159,7 +159,7 @@ def _view_available_resources(system_manager):
                 resource.get('quantity', 0)
             ])
         headers = ["Resource ID", "Name", "Category", "Quantity"]
-        print("\n" + tabulate(table_data, headers=headers, tablefmt="grid"))
+        print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
     except SystemManagerError as e:
         print(f"\n Error loading resources: {e}")
 
@@ -251,14 +251,17 @@ def _return_resource(system_manager, student_id):
         return
 
     # Display active borrowings
-    print(f"\n{'Transaction ID':<15} {'Resource ID':<15} {'Borrow Date':<15} {'Due Date':<15}")
-    print("-" * 60)
-
+    table_data = []
     for tx in active_borrowings:
-        print(f"{tx['transaction_id']:<15} {tx['resource_id']:<15} "
-              f"{tx['borrow_date']:<15} {tx['due_date']:<15}")
+        table_data.append([
+            tx['transaction_id'],
+            tx['resource_id'],
+            tx['borrow_date'],
+            tx['due_date']
+        ])
 
-    print("-" * 60)
+    headers = ["Transaction ID", "Resource ID", "Borrow Date", "Due Date"]
+    print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
     # Get return method choice
     print("\nHow would you like to return?")
@@ -281,7 +284,7 @@ def _return_resource(system_manager, student_id):
             return
 
         try:
-            # Use the by_student_resource method your teammate built
+            # Uses the by_student_resource method
             transaction = system_manager.return_resource_by_student_resource(
                 student_id, resource_id
             )
@@ -369,36 +372,46 @@ def _view_my_history(system_manager, student_id):
         # Show active borrowings
         if active:
             print(f"\n CURRENTLY BORROWED ({len(active)}):")
-            print("-" * 80)
-            print(f"{'Trans ID':<12} {'Resource ID':<15} {'Borrowed':<12} {'Due Date':<12} {'Status':<10}")
-            print("-" * 80)
 
+            # Prepare data for tabulate
+            table_data = []
             for tx in active:
                 # Check if overdue
                 today = date.today().isoformat()
                 is_overdue = system_manager.is_overdue(tx, today)
-                status_display = " OVERDUE" if is_overdue else "Borrowed"
+                status_display = "⚠️ OVERDUE" if is_overdue else "Borrowed"
 
-                print(f"{tx['transaction_id']:<12} {tx['resource_id']:<15} "
-                      f"{tx['borrow_date']:<12} {tx['due_date']:<12} {status_display:<10}")
+                table_data.append([
+                    tx['transaction_id'],
+                    tx['resource_id'],
+                    tx['borrow_date'],
+                    tx['due_date'],
+                    status_display
+                ])
 
-            print("-" * 80)
+            headers = ["Transaction ID", "Resource ID", "Borrow Date", "Due Date", "Status"]
+            print("\n" + tabulate(table_data, headers=headers, tablefmt="grid"))
 
         # Show completed transactions
         if completed:
             print(f"\n PAST TRANSACTIONS ({len(completed)}):")
-            print("-" * 90)
-            print(f"{'Trans ID':<12} {'Resource ID':<15} {'Borrowed':<12} {'Returned':<12} {'Status':<10}")
-            print("-" * 90)
 
+            # Prepare data for tabulate
+            table_data = []
             for tx in completed:
                 return_date = tx.get('return_date', 'N/A')
                 status = tx.get('status', 'N/A')
 
-                print(f"{tx['transaction_id']:<12} {tx['resource_id']:<15} "
-                      f"{tx['borrow_date']:<12} {return_date:<12} {status:<10}")
+                table_data.append([
+                    tx['transaction_id'],
+                    tx['resource_id'],
+                    tx['borrow_date'],
+                    return_date,
+                    status
+                ])
 
-            print("-" * 90)
+            headers = ["Transaction ID", "Resource ID", "Borrow Date", "Return Date", "Status"]
+            print("\n" + tabulate(table_data, headers=headers, tablefmt="grid"))
 
         # Summary
         print(f"\nTotal transactions: {len(transactions)}")
