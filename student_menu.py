@@ -6,6 +6,7 @@
 # - View their borrowing history
 
 from datetime import date
+from tabulate import tabulate
 from system_manager import SystemManagerError, NotFoundError, ValidationError, ConflictError
 
 
@@ -149,17 +150,16 @@ def _view_available_resources(system_manager):
         print(f"\n{'ID':<12} {'Name':<30} {'Category':<20} {'Qty':<5}")
         print("-" * 70)
 
+        table_data = []
         for resource in available:
-            resource_id = resource.get('resource_id', 'N/A')
-            name = resource.get('name', 'N/A')
-            rtype = resource.get('type', 'N/A')
-            quantity = resource.get('quantity', 0)
-
-            print(f"{resource_id:<12} {name:<30} {rtype:<20} {quantity:<5}")
-
-            print("-" * 70)
-            print(f"Total available resources: {len(available)}")
-
+            table_data.append([
+                resource.get('resource_id', 'N/A'),
+                resource.get('name', 'N/A'),
+                resource.get('type', 'N/A'),
+                resource.get('quantity', 0)
+            ])
+        headers = ["Resource ID", "Name", "Category", "Quantity"]
+        print("\n" + tabulate(table_data, headers=headers, tablefmt="grid"))
     except SystemManagerError as e:
         print(f"\n Error loading resources: {e}")
 
