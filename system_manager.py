@@ -6,9 +6,6 @@ This file contains the SystemManager class which controls the main rules of the 
 - It checks inputs and prevents invalid actions
 - It manages students, resources, and borrowing transactions
 
-Note: This version avoids:
-- from __future__ import annotations
-- dataclasses / @dataclass
 """
 
 from datetime import date, datetime, timedelta

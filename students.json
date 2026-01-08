@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "student_id": "S001",
+    "name": "Princess Addai",
+    "email": "p.addai@alustudent.com"
+  },
+  {
+    "student_id": "S002",
+    "name": "Kojo Appiah",
+    "email": "k.appiah@alustudent.com"
+  },
+  {
+    "student_id": "S003",
+    "name": "Acher Pathmos",
+    "email": "a.patmos@alustudent.com"
+  }
+]
