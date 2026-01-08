@@ -339,16 +339,16 @@ def _return_resource(system_manager, student_id):
 
 
 def _view_my_history(system_manager, student_id):
-    """
-    Display complete borrowing history for the current student.
 
-    Shows both active borrowings and past returns.
-    Uses system_manager.list_transactions(student_id)
+    # Display complete borrowing history for the current student.
+    #
+    # Shows both active borrowings and past returns.
+    # Uses system_manager.list_transactions(student_id)
+    #
+    # Args:
+    #     system_manager: SystemManager instance
+    #     student_id: Current student's ID
 
-    Args:
-        system_manager: SystemManager instance
-        student_id: Current student's ID
-    """
     print("\n" + "=" * 60)
     print("MY BORROWING HISTORY")
     print("=" * 60)
