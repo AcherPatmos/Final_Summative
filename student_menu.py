@@ -390,7 +390,7 @@ def _view_my_history(system_manager, student_id):
                 ])
 
             headers = ["Transaction ID", "Resource ID", "Borrow Date", "Due Date", "Status"]
-            print("\n" + tabulate(table_data, headers=headers, tablefmt="grid"))
+            print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
         # Show completed transactions
         if completed:
@@ -411,7 +411,7 @@ def _view_my_history(system_manager, student_id):
                 ])
 
             headers = ["Transaction ID", "Resource ID", "Borrow Date", "Return Date", "Status"]
-            print("\n" + tabulate(table_data, headers=headers, tablefmt="grid"))
+            print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
         # Summary
         print(f"\nTotal transactions: {len(transactions)}")
