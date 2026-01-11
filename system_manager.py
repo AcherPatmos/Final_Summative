@@ -89,8 +89,8 @@ class RoleConfig:
 
     def __init__(
         self,
-        student_domains: tuple = ("student.campus.edu",),
-        staff_domains: tuple = ("campus.edu",),
+        student_domains: tuple = ("alustudent.com",),
+        staff_domains: tuple = ("alueducation.com",),
     ):
         self.student_domains = student_domains
         self.staff_domains = staff_domains
