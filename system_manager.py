@@ -82,16 +82,13 @@ def require_int_ge_0(value: Any, field: str) -> int:
 class RoleConfig:
     """
     Controls role detection based on email domain.
-    Example:
-      student_domains=("alustudent.com",)
-      staff_domains=("alu.edu",)
+    It stores:
+    which email domains count as students
+    which email domains count as staff
+
     """
 
-    def __init__(
-        self,
-        student_domains: tuple = ("alustudent.com",),
-        staff_domains: tuple = ("alueducation.com",),
-    ):
+    def __init__(self,student_domains: tuple = ("alustudent.com",),staff_domains: tuple = ("alueducation.com",),):
         self.student_domains = student_domains
         self.staff_domains = staff_domains
 
@@ -103,9 +100,12 @@ class SystemManager:
     def __init__(self, file_manager, due_days: int = 3, role_config: Optional[RoleConfig] = None):
         self.file_manager = file_manager
         self.due_days = due_days
-        self.role_config = role_config if role_config is not None else RoleConfig()
-
+        self.role_config = role_config if role_config is not None else RoleConfig() #Use the RoleConfig provided from main.py if one is passed in;
+                                                                                    # otherwise, fall back to the default RoleConfig defined in this file.
         # In-memory data
+        # This creates an attribute called students inside the SystemManager object.
+        # The type hints simply document that each list contains dictionary records loaded from JSON.
+
         self.students: List[Dict[str, Any]] = []
         self.resources: List[Dict[str, Any]] = []
         self.transactions: List[Dict[str, Any]] = []
@@ -113,17 +113,11 @@ class SystemManager:
     # ----------------------------
     # Load / Save
     # ----------------------------
-    def load_all(self) -> None:
+    def load_all(self) -> None:                    #Its job is to load all data from files into memory
         self.students = self.file_manager.load_students() or []
         self.resources = self.file_manager.load_resources() or []
         self.transactions = self.file_manager.load_transactions() or []
 
-        # normalize old keys (optional safety)
-        for r in self.resources:
-            if "resource_id" not in r and "item_id" in r:
-                r["resource_id"] = r.pop("item_id")
-            if "type" not in r and "rtype" in r:
-                r["type"] = r.pop("rtype")
 
     def save_all(self) -> None:
         self.file_manager.save_students(self.students)

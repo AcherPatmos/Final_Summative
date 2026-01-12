@@ -49,7 +49,7 @@ def _prompt_continue() -> None:
 def main() -> None:
     _print_header()
 
-    # If you want a dedicated folder: data_dir="data"
+
     try:
         fm = FileManager(
             students_file="students.json",
@@ -57,20 +57,18 @@ def main() -> None:
             transactions_file="transactions.json",
             data_dir=None,
         )
-    except (FileManagerError, OSError) as e:
-        print(f"\nStartup error (FileManager): {e}")
-        return
+    except (FileManagerError, OSError) as e:         # This catches both file-related errors and system-level OS errors.
+        print(f"\nStartup error (FileManager): {e}") # FileManagerError: raised by FileManager for logical/file handling issues.
+        return                                       # OSError: raised by the operating system (e.g., permission denied, invalid path, disk errors).
 
-    # Configure your campus domains here:
-    # Example:
-    #   student_domains=("student.campus.edu",)
-    #   staff_domains=("campus.edu",)
-    role_config = RoleConfig(
+    # Configuring your campus domains:
+
+    role_config = RoleConfig(                        #This creates a RoleConfig object with custom values.
         student_domains=("alustudent.com",),
         staff_domains=("alueducation.com",),
     )
 
-    sm = SystemManager(file_manager=fm, due_days=3, role_config=role_config)
+    sm = SystemManager(file_manager=fm, due_days=3, role_config=role_config) #This line is creating a SystemManager object and passing three arguments into its constructor (__init__).
 
     try:
         sm.load_all()
