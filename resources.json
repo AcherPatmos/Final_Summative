@@ -4,5 +4,11 @@
     "name": "Laptop1",
     "type": "tech tools",
     "quantity": 1
+  },
+  {
+    "resource_id": "R001",
+    "name": "Laptop",
+    "type": "IT",
+    "quantity": 3
   }
 ]
