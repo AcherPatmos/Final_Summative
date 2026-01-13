@@ -16,5 +16,11 @@
     "name": "notebook",
     "type": "history",
     "quantity": 3
+  },
+  {
+    "resource_id": "R0004",
+    "name": "Pen",
+    "type": "Stationary",
+    "quantity": 50
   }
 ]

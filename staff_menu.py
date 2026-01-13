@@ -1,31 +1,96 @@
+
 # staff_menu.py
 
 from datetime import date
+from tabulate import tabulate
 
 
 # -------------------------------------------------
-# Helper function: print transactions in table form
+# Helper function: print transactions in table form (TABULATE)
 # -------------------------------------------------
 def print_transactions_table(transactions):
+    """
+    Display transactions in a clean table using tabulate.
+    """
     if not transactions:
-        print("No transactions found.")
+        print("\nNo transactions found.")
         return
 
-    print("\n{:<8} {:<8} {:<10} {:<12} {:<12} {:<12} {:<10}".format(
-        "T_ID", "STUD_ID", "RES_ID", "BORROW", "DUE", "RETURN", "STATUS"
-    ))
-    print("-" * 75)
-
+    table_data = []
     for t in transactions:
-        print("{:<8} {:<8} {:<10} {:<12} {:<12} {:<12} {:<10}".format(
-            t["transaction_id"],
-            t["student_id"],
-            t["resource_id"],
-            t["borrow_date"],
-            t["due_date"],
-            t["return_date"] if t["return_date"] else "-",
-            t["status"]
-        ))
+        table_data.append([
+            t.get("transaction_id", "N/A"),
+            t.get("student_id", "N/A"),
+            t.get("resource_id", "N/A"),
+            t.get("borrow_date", "N/A"),
+            t.get("due_date", "N/A"),
+            t.get("return_date") if t.get("return_date") else "-",
+            t.get("status", "N/A"),
+        ])
+
+    headers = [
+        "Transaction ID",
+        "Student ID",
+        "Resource ID",
+        "Borrow Date",
+        "Due Date",
+        "Return Date",
+        "Status"
+    ]
+
+    print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+
+
+# -------------------------------------------------
+# Helper function: print resources in table form (TABULATE)
+# -------------------------------------------------
+def print_resources_table(resources):
+    """
+    Display resources in a clean table using tabulate.
+    """
+    if not resources:
+        print("\nNo resources found.")
+        return
+
+    table_data = []
+    for r in resources:
+        table_data.append([
+            r.get("resource_id", "N/A"),
+            r.get("name", "N/A"),
+            r.get("type", "N/A"),
+            r.get("quantity", 0),
+        ])
+
+    headers = ["Resource ID", "Name", "Category", "Quantity"]
+    print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+
+
+# -------------------------------------------------
+# Helper function: ask whether to go back or exit
+# -------------------------------------------------
+def back_to_menu_or_exit():
+    """
+    After completing an action, ask staff whether to:
+    1) go back to the staff menu
+    0) exit to the main menu
+
+    Returns:
+        True  -> show staff menu again
+        False -> exit staff menu and return to main.py
+    """
+    while True:
+        print("\nWhat would you like to do next?")
+        print("1) Go back to Staff Menu")
+        print("0) Exit to Main Menu")
+
+        choice = input("Choose option: ").strip()
+
+        if choice == "1":
+            return True
+        elif choice == "0":
+            return False
+        else:
+            print("Invalid choice. Please try again.")
 
 
 # -------------------------------------------------
@@ -62,6 +127,9 @@ def staff_menu(system_manager):
             except Exception as e:
                 print(f"Error: {e}")
 
+            if not back_to_menu_or_exit():
+                break
+
         # ----------------------------
         # Update resource quantity
         # ----------------------------
@@ -76,6 +144,9 @@ def staff_menu(system_manager):
             except Exception as e:
                 print(f"Error: {e}")
 
+            if not back_to_menu_or_exit():
+                break
+
         # ----------------------------
         # Remove resource
         # ----------------------------
@@ -88,37 +159,39 @@ def staff_menu(system_manager):
             except Exception as e:
                 print(f"Error: {e}")
 
+            if not back_to_menu_or_exit():
+                break
+
         # ----------------------------
-        # View all resources
+        # View all resources (TABULATE)
         # ----------------------------
         elif choice == "4":
             resources = system_manager.list_resources()
-            if not resources:
-                print("No resources found.")
-            else:
-                print("\nResources:")
-                for r in resources:
-                    print(
-                        f"- ID: {r['resource_id']} | "
-                        f"Name: {r['name']} | "
-                        f"Type: {r['type']} | "
-                        f"Quantity: {r['quantity']}"
-                    )
+            print_resources_table(resources)
+
+            if not back_to_menu_or_exit():
+                break
 
         # ----------------------------
-        # View all transactions (TABLE)
+        # View all transactions (TABULATE)
         # ----------------------------
         elif choice == "5":
             transactions = system_manager.list_transactions()
             print_transactions_table(transactions)
 
+            if not back_to_menu_or_exit():
+                break
+
         # ----------------------------
-        # View overdue transactions (TABLE)
+        # View overdue transactions (TABULATE)
         # ----------------------------
         elif choice == "6":
             today = date.today().isoformat()
             overdue = system_manager.list_overdue(today)
             print_transactions_table(overdue)
+
+            if not back_to_menu_or_exit():
+                break
 
         # ----------------------------
         # Exit
@@ -129,3 +202,4 @@ def staff_menu(system_manager):
 
         else:
             print("Invalid choice. Try again.")
+
