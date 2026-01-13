@@ -23,7 +23,7 @@ def student_menu(system_manager, email_from_main: str):
 
     while True:
         print(f"\n{'=' * 60}")
-        print(f"STUDENT MENU - Logged in as: {student_name}")
+        print(f"STUDENT MENU")
         print(f"{'=' * 60}")
         print("1) View available resources")
         print("2) Borrow a resource")
