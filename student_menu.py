@@ -1,3 +1,4 @@
+# student_menu.py
 # Student menu for the Campus Resource Borrow & Return Management System.
 # Students can:
 # - View available resources
@@ -16,11 +17,13 @@ def student_menu(system_manager, email_from_main: str):
     if student_id is None:
         print("\nReturning to main menu...")
         return
+
     student = system_manager.find_student(student_id)
-    student_name = student["name"]
+    student_name = student["name"] if student else student_id  # fallback
+
     while True:
-        print(f"\n{'=' * 60}")  # for  visual separation in the console
-        print(f"STUDENT MENU ")
+        print(f"\n{'=' * 60}")
+        print(f"STUDENT MENU - Logged in as: {student_name}")
         print(f"{'=' * 60}")
         print("1) View available resources")
         print("2) Borrow a resource")
@@ -33,22 +36,31 @@ def student_menu(system_manager, email_from_main: str):
 
         if choice == "1":
             _view_available_resources(system_manager)
+            if not _back_or_exit():
+                break
 
         elif choice == "2":
             _borrow_resource(system_manager, student_id)
+            if not _back_or_exit():
+                break
 
         elif choice == "3":
             _return_resource(system_manager, student_id)
+            if not _back_or_exit():
+                break
 
         elif choice == "4":
             _view_my_history(system_manager, student_id)
+            if not _back_or_exit():
+                break
 
         elif choice == "0":
             print("\nLogging out...")
             break
 
         else:
-            print("\n Invalid choice. Please try again.")
+            print("\nInvalid choice. Please try again.")
+
 
 def _back_or_exit() -> bool:
     """
@@ -69,6 +81,7 @@ def _back_or_exit() -> bool:
         else:
             print("Invalid choice. Please try again.")
 
+
 def _get_or_create_student(system_manager, email_from_main: str):
     """
     Uses the email already entered in main.py.
@@ -76,14 +89,13 @@ def _get_or_create_student(system_manager, email_from_main: str):
     2) If exists -> login and return student_id
     3) If not -> register (ask name), create ID, save, then login
     """
-
     print("\n" + "=" * 60)
     print("STUDENT LOGIN / REGISTRATION")
     print("=" * 60)
 
     email = email_from_main.strip().lower()
 
-    # 1) Check if student already exists by email
+    # Check if student already exists by email
     existing_student = None
     for student in system_manager.students:
         if student.get("email", "").lower() == email:
@@ -94,7 +106,7 @@ def _get_or_create_student(system_manager, email_from_main: str):
         print(f"\nWelcome back, {existing_student['name']}!")
         return existing_student["student_id"]
 
-    # 2) If not found -> registration starts
+    # Student not found -> registration starts
     print("\nFirst time login detected. Let's create your account.")
     name = input("Enter your full name: ").strip()
 
@@ -102,7 +114,6 @@ def _get_or_create_student(system_manager, email_from_main: str):
         print("Name cannot be empty.")
         return None
 
-    # Generate a new student ID (S001, S002...)
     student_id = _generate_student_id(system_manager)
 
     try:
@@ -116,32 +127,17 @@ def _get_or_create_student(system_manager, email_from_main: str):
 
 
 def _generate_student_id(system_manager):
-    # Generate a new unique student ID in format S001, S002, etc.
-    #
-    # This follows the same pattern as system_manager.next_transaction_id()
-    #
-    # Returns:
-    #     str: New student ID like "S001"
-
     nums = []
     for student in system_manager.students:
         sid = str(student.get("student_id", ""))
         if sid.startswith("S") and sid[1:].isdigit():
             nums.append(int(sid[1:]))
 
-    if nums:
-        new_num = max(nums) + 1
-    else:
-        new_num = 1
-
+    new_num = (max(nums) + 1) if nums else 1
     return "S" + str(new_num).zfill(3)
 
 
 def _view_available_resources(system_manager):
-    # Display all resources that are currently available (quantity > 0).
-    #
-    # Uses system_manager.list_available_resources()
-
     print("\n" + "=" * 60)
     print("AVAILABLE RESOURCES")
     print("=" * 60)
@@ -150,127 +146,95 @@ def _view_available_resources(system_manager):
         available = system_manager.list_available_resources()
 
         if not available:
-            print("\n No resources available for borrowing at the moment.")
+            print("\nNo resources available for borrowing at the moment.")
             print("Please check back later.")
             return
-            # Display in a nice formatted table
-        print(f"\n{'ID':<12} {'Name':<30} {'Category':<20} {'Qty':<5}")
-        print("-" * 70)
 
         table_data = []
         for resource in available:
             table_data.append([
-                resource.get('resource_id', 'N/A'),
-                resource.get('name', 'N/A'),
-                resource.get('type', 'N/A'),
-                resource.get('quantity', 0)
+                resource.get("resource_id", "N/A"),
+                resource.get("name", "N/A"),
+                resource.get("type", "N/A"),
+                resource.get("quantity", 0),
             ])
+
         headers = ["Resource ID", "Name", "Category", "Quantity"]
         print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+
     except SystemManagerError as e:
-        print(f"\n Error loading resources: {e}")
+        print(f"\nError loading resources: {e}")
 
 
 def _borrow_resource(system_manager, student_id):
-    # Handle the borrowing process for a student.
-    #
-    # Uses system_manager.borrow_resource() which handles:
-    # - Checking resource availability
-    # - Reducing quantity
-    # - Creating transaction
-    # - Setting due date (3 days from now)
-
     print("\n" + "=" * 60)
     print("BORROW A RESOURCE")
     print("=" * 60)
 
-    # First show what's available
     print("\nTip: View available resources (option 1) to see what you can borrow.")
 
     resource_id = input("\nEnter Resource ID to borrow (or 0 to cancel): ").strip()
 
     if resource_id == "0":
-        print("Borrowing cancelled. Returning to main menu")
+        print("Borrowing cancelled.")
         return
 
     if not resource_id:
-        print(" Resource ID cannot be empty.")
+        print("Resource ID cannot be empty.")
         return
 
-    # Try to borrow the resource
     try:
-        # Call borrow_resource method
         transaction = system_manager.borrow_resource(student_id, resource_id)
 
-        # Success! Show the details
-        print("\n Resource borrowed successfully!")
+        print("\nResource borrowed successfully!")
         print("-" * 60)
         print(f"Transaction ID: {transaction['transaction_id']}")
         print(f"Resource ID:    {transaction['resource_id']}")
         print(f"Borrow Date:    {transaction['borrow_date']}")
         print(f"Due Date:       {transaction['due_date']}")
         print("-" * 60)
-        print(f"⚠  Please return by {transaction['due_date']} to avoid overdue status.")
+        print(f"Please return by {transaction['due_date']} to avoid overdue status.")
 
     except NotFoundError as e:
-        print(f"\n Not Found: {e}")
+        print(f"\nNot Found: {e}")
         print("Make sure you entered the correct Resource ID.")
 
     except ConflictError as e:
-        print(f"\n Cannot Borrow: {e}")
-        print("This might mean:")
-        print("  - Resource is not available (quantity is 0)")
-        print("  - You already have this resource borrowed")
+        print(f"\nCannot Borrow: {e}")
 
     except ValidationError as e:
-        print(f"\n Invalid Input: {e}")
+        print(f"\nInvalid Input: {e}")
 
     except SystemManagerError as e:
-        print(f"\n Error: {e}")
+        print(f"\nError: {e}")
 
 
 def _return_resource(system_manager, student_id):
-    # Handle the return process for a student.
-    #
-    # Students can return by entering either:
-    # - Transaction ID (if they know it)
-    # - Resource ID (system finds their active transaction)
-    #
-    # Uses system_manager.return_resource() or
-    # system_manager.return_resource_by_student_resource()
-
     print("\n" + "=" * 60)
     print("RETURN A RESOURCE")
     print("=" * 60)
 
-    # First, show what this student currently has borrowed
-    print("\nYour currently borrowed items:")
-    print("-" * 60)
-
     active_borrowings = []
     for tx in system_manager.transactions:
-        if (tx.get('student_id') == student_id and
-                tx.get('status') == 'borrowed'):
+        if tx.get("student_id") == student_id and tx.get("status") == "borrowed":
             active_borrowings.append(tx)
 
     if not active_borrowings:
-        print(" You don't have any borrowed resources to return.")
+        print("\nYou don't have any borrowed resources to return.")
         return
 
-    # Display active borrowings
     table_data = []
     for tx in active_borrowings:
         table_data.append([
-            tx['transaction_id'],
-            tx['resource_id'],
-            tx['borrow_date'],
-            tx['due_date']
+            tx.get("transaction_id", "N/A"),
+            tx.get("resource_id", "N/A"),
+            tx.get("borrow_date", "N/A"),
+            tx.get("due_date", "N/A"),
         ])
 
     headers = ["Transaction ID", "Resource ID", "Borrow Date", "Due Date"]
     print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
-    # Get return method choice
     print("\nHow would you like to return?")
     print("1) By Resource ID (easier)")
     print("2) By Transaction ID (more precise)")
@@ -283,147 +247,96 @@ def _return_resource(system_manager, student_id):
         return
 
     elif method == "1":
-        # Return by Resource ID
         resource_id = input("\nEnter Resource ID to return: ").strip()
-
         if not resource_id:
-            print(" Resource ID cannot be empty.")
+            print("Resource ID cannot be empty.")
             return
 
         try:
-            # Uses the by_student_resource method
-            transaction = system_manager.return_resource_by_student_resource(
-                student_id, resource_id
-            )
-
-            print("\n✅ Resource returned successfully!")
+            transaction = system_manager.return_resource_by_student_resource(student_id, resource_id)
+            print("\nResource returned successfully!")
             print("-" * 60)
             print(f"Transaction ID: {transaction['transaction_id']}")
             print(f"Resource ID:    {transaction['resource_id']}")
             print(f"Return Date:    {transaction['return_date']}")
             print(f"Status:         {transaction['status']}")
             print("-" * 60)
-            print("Thank you for returning on time!")
-
-        except NotFoundError as e:
-            print(f"\n Not Found: {e}")
-            print("Make sure you borrowed this resource and haven't returned it yet.")
-
-        except ConflictError as e:
-            print(f"\n Error: {e}")
 
         except SystemManagerError as e:
-            print(f"\n Error: {e}")
+            print(f"\nError: {e}")
 
     elif method == "2":
-        # Return by Transaction ID
         transaction_id = input("\nEnter Transaction ID to return: ").strip()
-
         if not transaction_id:
-            print(" Transaction ID cannot be empty.")
+            print("Transaction ID cannot be empty.")
             return
 
         try:
             transaction = system_manager.return_resource(transaction_id)
-
-            print("\n Resource returned successfully!")
+            print("\nResource returned successfully!")
             print("-" * 60)
             print(f"Transaction ID: {transaction['transaction_id']}")
             print(f"Resource ID:    {transaction['resource_id']}")
             print(f"Return Date:    {transaction['return_date']}")
             print(f"Status:         {transaction['status']}")
             print("-" * 60)
-            print("Thank you for returning on time!")
-
-        except NotFoundError as e:
-            print(f"\n Not Found: {e}")
-
-        except ConflictError as e:
-            print(f"\n Error: {e}")
 
         except SystemManagerError as e:
-            print(f"\n Error: {e}")
+            print(f"\nError: {e}")
 
     else:
-        print(" Invalid choice.")
+        print("Invalid choice.")
 
 
 def _view_my_history(system_manager, student_id):
-
-    # Display complete borrowing history for the current student.
-    #
-    # Shows both active borrowings and past returns.
-    # Uses system_manager.list_transactions(student_id)
-    #
-    # Args:
-    #     system_manager: SystemManager instance
-    #     student_id: Current student's ID
-
     print("\n" + "=" * 60)
     print("MY BORROWING HISTORY")
     print("=" * 60)
 
     try:
-        # Get all transactions for this student
         transactions = system_manager.list_transactions(student_id=student_id)
 
         if not transactions:
-            print("\n No borrowing history found.")
-            print("You haven't borrowed any resources yet.")
+            print("\nNo borrowing history found.")
             return
 
-        # Separate active and completed
-        active = [tx for tx in transactions if tx.get('status') == 'borrowed']
-        completed = [tx for tx in transactions if tx.get('status') in ['returned', 'overdue']]
+        active = [tx for tx in transactions if tx.get("status") == "borrowed"]
+        completed = [tx for tx in transactions if tx.get("status") in ["returned", "overdue"]]
 
-        # Show active borrowings
         if active:
-            print(f"\n CURRENTLY BORROWED ({len(active)}):")
-
-            # Prepare data for tabulate
+            print(f"\nCURRENTLY BORROWED ({len(active)}):")
             table_data = []
+            today = date.today().isoformat()
             for tx in active:
-                # Check if overdue
-                today = date.today().isoformat()
-                is_overdue = system_manager.is_overdue(tx, today)
-                status_display = "⚠️ OVERDUE" if is_overdue else "Borrowed"
-
+                overdue_flag = system_manager.is_overdue(tx, today)
+                status_display = "OVERDUE" if overdue_flag else "Borrowed"
                 table_data.append([
-                    tx['transaction_id'],
-                    tx['resource_id'],
-                    tx['borrow_date'],
-                    tx['due_date'],
-                    status_display
+                    tx.get("transaction_id", "N/A"),
+                    tx.get("resource_id", "N/A"),
+                    tx.get("borrow_date", "N/A"),
+                    tx.get("due_date", "N/A"),
+                    status_display,
                 ])
-
             headers = ["Transaction ID", "Resource ID", "Borrow Date", "Due Date", "Status"]
             print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
-        # Show completed transactions
         if completed:
-            print(f"\n PAST TRANSACTIONS ({len(completed)}):")
-
-            # Prepare data for tabulate
+            print(f"\nPAST TRANSACTIONS ({len(completed)}):")
             table_data = []
             for tx in completed:
-                return_date = tx.get('return_date', 'N/A')
-                status = tx.get('status', 'N/A')
-
                 table_data.append([
-                    tx['transaction_id'],
-                    tx['resource_id'],
-                    tx['borrow_date'],
-                    return_date,
-                    status
+                    tx.get("transaction_id", "N/A"),
+                    tx.get("resource_id", "N/A"),
+                    tx.get("borrow_date", "N/A"),
+                    tx.get("return_date", "N/A"),
+                    tx.get("status", "N/A"),
                 ])
-
             headers = ["Transaction ID", "Resource ID", "Borrow Date", "Return Date", "Status"]
             print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
-        # Summary
         print(f"\nTotal transactions: {len(transactions)}")
         print(f"Active borrowings:  {len(active)}")
         print(f"Completed returns:  {len(completed)}")
 
     except SystemManagerError as e:
-        print(f"\n Error loading history: {e}")
+        print(f"\nError loading history: {e}")
