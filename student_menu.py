@@ -50,6 +50,24 @@ def student_menu(system_manager, email_from_main: str):
         else:
             print("\n Invalid choice. Please try again.")
 
+def _back_or_exit() -> bool:
+    """
+    Ask user whether to return to the student menu or exit.
+    Returns True to continue menu, False to exit to main menu.
+    """
+    while True:
+        print("\nWhat would you like to do next?")
+        print("1) Go back to Student Menu")
+        print("0) Exit to Main Menu")
+
+        choice = input("\nChoose option: ").strip()
+
+        if choice == "1":
+            return True
+        elif choice == "0":
+            return False
+        else:
+            print("Invalid choice. Please try again.")
 
 def _get_or_create_student(system_manager, email_from_main: str):
     """
