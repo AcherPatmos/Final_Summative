@@ -1,8 +1,9 @@
-
 # staff_menu.py
 
 from datetime import date
 from tabulate import tabulate
+
+from system_manager import SystemManagerError, ValidationError, NotFoundError, ConflictError
 
 
 # -------------------------------------------------
@@ -123,9 +124,19 @@ def staff_menu(system_manager):
             try:
                 quantity = int(qty_str)
                 system_manager.add_resource(resource_id, name, rtype, quantity)
-                print("Resource added successfully.")
-            except Exception as e:
-                print(f"Error: {e}")
+                print("\nResource added successfully.")
+
+            except ValueError:
+                print("\nInvalid quantity. Please enter a number.")
+
+            except ConflictError as e:
+                print(f"\nCannot add resource: {e}")
+
+            except ValidationError as e:
+                print(f"\nInvalid input: {e}")
+
+            except SystemManagerError as e:
+                print(f"\nError: {e}")
 
             if not back_to_menu_or_exit():
                 break
@@ -140,9 +151,19 @@ def staff_menu(system_manager):
             try:
                 new_quantity = int(qty_str)
                 system_manager.update_resource_quantity(resource_id, new_quantity)
-                print("Quantity updated successfully.")
-            except Exception as e:
-                print(f"Error: {e}")
+                print("\nQuantity updated successfully.")
+
+            except ValueError:
+                print("\nInvalid quantity. Please enter a number.")
+
+            except NotFoundError as e:
+                print(f"\nResource not found: {e}")
+
+            except ValidationError as e:
+                print(f"\nInvalid input: {e}")
+
+            except SystemManagerError as e:
+                print(f"\nError: {e}")
 
             if not back_to_menu_or_exit():
                 break
@@ -155,40 +176,62 @@ def staff_menu(system_manager):
 
             try:
                 system_manager.remove_resource(resource_id)
-                print("Resource removed successfully.")
-            except Exception as e:
-                print(f"Error: {e}")
+                print("\nResource removed successfully.")
+
+            except NotFoundError as e:
+                print(f"\nResource not found: {e}")
+
+            except ConflictError as e:
+                print(f"\nCannot remove resource: {e}")
+
+            except ValidationError as e:
+                print(f"\nInvalid input: {e}")
+
+            except SystemManagerError as e:
+                print(f"\nError: {e}")
 
             if not back_to_menu_or_exit():
                 break
 
         # ----------------------------
-        # View all resources (TABULATE)
+        # View all resources
         # ----------------------------
         elif choice == "4":
-            resources = system_manager.list_resources()
-            print_resources_table(resources)
+            try:
+                resources = system_manager.list_resources()
+                print_resources_table(resources)
+
+            except SystemManagerError as e:
+                print(f"\nError: {e}")
 
             if not back_to_menu_or_exit():
                 break
 
         # ----------------------------
-        # View all transactions (TABULATE)
+        # View all transactions
         # ----------------------------
         elif choice == "5":
-            transactions = system_manager.list_transactions()
-            print_transactions_table(transactions)
+            try:
+                transactions = system_manager.list_transactions()
+                print_transactions_table(transactions)
+
+            except SystemManagerError as e:
+                print(f"\nError: {e}")
 
             if not back_to_menu_or_exit():
                 break
 
         # ----------------------------
-        # View overdue transactions (TABULATE)
+        # View overdue transactions
         # ----------------------------
         elif choice == "6":
-            today = date.today().isoformat()
-            overdue = system_manager.list_overdue(today)
-            print_transactions_table(overdue)
+            try:
+                today = date.today().isoformat()
+                overdue = system_manager.list_overdue(today)
+                print_transactions_table(overdue)
+
+            except SystemManagerError as e:
+                print(f"\nError: {e}")
 
             if not back_to_menu_or_exit():
                 break
@@ -197,9 +240,8 @@ def staff_menu(system_manager):
         # Exit
         # ----------------------------
         elif choice == "0":
-            print("Logging out...")
+            print("\nLogging out...")
             break
 
         else:
-            print("Invalid choice. Try again.")
-
+            print("\nInvalid choice. Try again.")
