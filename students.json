@@ -13,5 +13,20 @@
     "student_id": "S003",
     "name": "Acher Pathmos",
     "email": "a.patmos@alustudent.com"
+  },
+  {
+    "student_id": "S004",
+    "name": "Jonathan Sam",
+    "email": "j.sam@alustudent.com"
+  },
+  {
+    "student_id": "S005",
+    "name": "Hilda Jane",
+    "email": "h.jane@alustudent.com"
+  },
+  {
+    "student_id": "S006",
+    "name": "Gyan Charity",
+    "email": "g.charity@alustudent.com"
   }
 ]

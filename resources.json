@@ -10,5 +10,11 @@
     "name": "Laptop",
     "type": "IT",
     "quantity": 3
+  },
+  {
+    "resource_id": "R002",
+    "name": "notebook",
+    "type": "history",
+    "quantity": 3
   }
 ]

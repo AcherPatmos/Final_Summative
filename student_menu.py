@@ -10,17 +10,17 @@ from tabulate import tabulate
 from system_manager import SystemManagerError, NotFoundError, ValidationError, ConflictError
 
 
-def student_menu(system_manager):
-    # First, we need to get or create the student account
-    student_id = _get_or_create_student(system_manager)
+def student_menu(system_manager, email_from_main: str):
+    student_id = _get_or_create_student(system_manager, email_from_main)
 
     if student_id is None:
-        # User cancelled or error occurred
         print("\nReturning to main menu...")
         return
+    student = system_manager.find_student(student_id)
+    student_name = student["name"]
     while True:
         print(f"\n{'=' * 60}")  # for  visual separation in the console
-        print(f"STUDENT MENU - Logged in as: {student_id}")
+        print(f"STUDENT MENU - Logged in as: {student_name}")
         print(f"{'=' * 60}")
         print("1) View available resources")
         print("2) Borrow a resource")
@@ -51,30 +51,21 @@ def student_menu(system_manager):
             print("\n Invalid choice. Please try again.")
 
 
-def _get_or_create_student(system_manager):
-    # Get existing student or create new student account.
-    #
-    # This function handles the missing user registration feature.
-    # When a student logs in with their email, we:
-    # 1. Check if they already exist in the system
-    # 2. If not, create a new account for them
-    # 3. Return their student_id for use in the menu
-    #
-    # Returns:
-    #     str: student_id if successful, None if cancelled
+def _get_or_create_student(system_manager, email_from_main: str):
+    """
+    Uses the email already entered in main.py.
+    1) Check if student exists in students.json (loaded into system_manager.students)
+    2) If exists -> login and return student_id
+    3) If not -> register (ask name), create ID, save, then login
+    """
 
     print("\n" + "=" * 60)
     print("STUDENT LOGIN / REGISTRATION")
     print("=" * 60)
 
-    # Get student email (already validated by main.py for role)
-    email = input("Enter your student email: ").strip().lower()
+    email = email_from_main.strip().lower()
 
-    if not email:
-        print("Email cannot be empty.")
-        return None
-
-    # Check if student already exists by searching for email
+    # 1) Check if student already exists by email
     existing_student = None
     for student in system_manager.students:
         if student.get("email", "").lower() == email:
@@ -82,29 +73,27 @@ def _get_or_create_student(system_manager):
             break
 
     if existing_student:
-        # Student exists - welcome back!
-        print(f"\n Welcome back, {existing_student['name']}!")
-        return existing_student['student_id']
+        print(f"\nWelcome back, {existing_student['name']}!")
+        return existing_student["student_id"]
 
-    # Student doesn't exist - create new account
-    print("\n First time login detected. Let's create your account.")
+    # 2) If not found -> registration starts
+    print("\nFirst time login detected. Let's create your account.")
     name = input("Enter your full name: ").strip()
 
     if not name:
-        print(" Name cannot be empty.")
+        print("Name cannot be empty.")
         return None
 
-    # Generate new student ID
+    # Generate a new student ID (S001, S002...)
     student_id = _generate_student_id(system_manager)
 
-    # Create the student account
     try:
         system_manager.add_student(student_id, name, email)
-        print(f"\n Account created successfully!")
+        print(f"\nAccount created successfully!")
         print(f"Your Student ID is: {student_id}")
         return student_id
     except SystemManagerError as e:
-        print(f"\n Error creating account: {e}")
+        print(f"\nError creating account: {e}")
         return None
 
 

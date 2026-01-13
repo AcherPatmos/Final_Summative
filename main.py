@@ -115,7 +115,7 @@ def main() -> None:
                 _prompt_continue()
                 continue
             print("\nRole detected: STUDENT")
-            student_menu(sm)  # type: ignore
+            student_menu(sm, email)  # pass the same email the user already typed
 
         else:
             # Should never happen because determine_role only returns student/staff
