@@ -113,7 +113,7 @@ class SystemManager:
     # ----------------------------
     # Load / Save
     # ----------------------------
-    def load_all(self) -> None:                    #Its job is to load all data from files into memory
+    def load_all(self) -> None:                    #Its job is to load all data from files into memory temporarily
         self.students = self.file_manager.load_students() or []
         self.resources = self.file_manager.load_resources() or []
         self.transactions = self.file_manager.load_transactions() or []
