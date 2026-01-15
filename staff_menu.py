@@ -116,7 +116,28 @@ def staff_menu(system_manager):
         # Add resource
         # ----------------------------
         if choice == "1":
+            # Check ID first before asking for other details
             resource_id = input("Resource ID: ").strip()
+
+            # Validate immediately
+            if not resource_id:
+                print(" Error: Resource ID cannot be empty.")
+                continue
+
+            # Check for duplicates BEFORE asking for other details
+            try:
+                existing = system_manager.find_resource(resource_id)
+                if existing:
+                    print(f"\n Error: Resource ID '{resource_id}' already exists!")
+                    print(f" Existing resource: {existing['name']} ({existing['type']}, qty: {existing['quantity']})")
+                    print("  Please use a different Resource ID.\n")
+                    continue  # Go back to menu without asking for other fields
+            except Exception as e:
+                print(f" Error checking resource: {e}")
+                continue
+
+            # Only ask for other details if ID is unique
+            print("Resource ID is available.")
             name = input("Name: ").strip()
             rtype = input("Type/Category: ").strip()
             qty_str = input("Quantity: ").strip()
@@ -124,7 +145,7 @@ def staff_menu(system_manager):
             try:
                 quantity = int(qty_str)
                 system_manager.add_resource(resource_id, name, rtype, quantity)
-                print("\nResource added successfully.")
+                print("\n Resource added successfully!")
 
             except ValueError:
                 print("\nInvalid quantity. Please enter a number.")
