@@ -103,8 +103,7 @@ class SystemManager:
         self.role_config = role_config if role_config is not None else RoleConfig() #Use the RoleConfig provided from main.py if one is passed in;
                                                                                     # otherwise, fall back to the default RoleConfig defined in this file.
         # In-memory data
-        # This creates an attribute called students inside the SystemManager object.
-        # The type hints simply document that each list contains dictionary records loaded from JSON.
+        # These create an instance attribute  called students, resources and transactions
 
         self.students: List[Dict[str, Any]] = []
         self.resources: List[Dict[str, Any]] = []

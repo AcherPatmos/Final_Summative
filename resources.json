@@ -1,6 +1,6 @@
 [
   {
-    "resource_id": "L0001",
+    "resource_id": "R001",
     "name": "Laptop1",
     "type": "tech tools",
     "quantity": 1
@@ -18,9 +18,15 @@
     "quantity": 3
   },
   {
-    "resource_id": "R0004",
+    "resource_id": "R004",
     "name": "Pen",
     "type": "Stationary",
     "quantity": 50
+  },
+  {
+    "resource_id": "R005",
+    "name": "Calculator",
+    "type": "Stationary",
+    "quantity": 2
   }
 ]

@@ -28,5 +28,10 @@
     "student_id": "S006",
     "name": "Gyan Charity",
     "email": "g.charity@alustudent.com"
+  },
+  {
+    "student_id": "S007",
+    "name": "Rita Danny",
+    "email": "r.danny@alustudent.com"
   }
 ]

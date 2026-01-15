@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "transaction_id": "T001",
+    "student_id": "S001",
+    "resource_id": "R001",
+    "borrow_date": "2026-01-13",
+    "due_date": "2026-01-16",
+    "return_date": "2026-01-13",
+    "status": "returned"
+  }
+]
